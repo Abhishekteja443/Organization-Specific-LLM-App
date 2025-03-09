@@ -1,0 +1,10 @@
+requests
+beautifulsoup4
+ollama
+langchain
+datetime
+typing
+psutil
+numpy
+faiss-cpu
+-e .
