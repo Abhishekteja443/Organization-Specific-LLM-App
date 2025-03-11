@@ -4,6 +4,6 @@ setup(
     name="Oragnization Specific LLM App",
     author="Abhishek Teja",
     author_email="g.abhishekteja@gmail.com",
-    packages=find_packages(),
+    packages=find_packages("src"),
     install_requires=[]
 )

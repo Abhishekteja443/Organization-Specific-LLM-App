@@ -169,3 +169,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+
+Oragnization_Specific_LLM_App.egg-info/
+logs/
+faiss_store/

@@ -6,5 +6,6 @@ datetime
 typing
 psutil
 numpy
+flask
 faiss-cpu
 -e .

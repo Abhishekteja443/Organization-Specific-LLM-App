@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - URL Input</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Administrator Panel - Enter URLs</h2>
+
+        <!-- Base URL Input -->
+        <label for="base-url">Base URL (Sitemap):</label>
+        <div class="input-group">
+            <input type="text" id="base-url" placeholder="Enter Sitemap URL">
+            <button onclick="addBaseURL()">Add</button>
+        </div>
+        <ul id="base-url-list"></ul>
+
+        <!-- Additional URLs Input -->
+        <label for="extra-url">Additional URLs:</label>
+        <div class="input-group">
+            <input type="text" id="extra-url" placeholder="Enter Additional URL">
+            <button onclick="addExtraURL()">Add</button>
+        </div>
+        <ul id="extra-url-list"></ul>
+
+        <button class="submit-btn" onclick="submitData()">Submit URLs</button>
+        <p id="error-message" class="error"></p>
+        <div id="output"></div>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
