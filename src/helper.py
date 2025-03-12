@@ -15,18 +15,11 @@ import gc
 import re
 from concurrent.futures import ThreadPoolExecutor
 from src import logger
-from dotenv import load_dotenv, dotenv_values 
+import src
 
-load_dotenv() 
-
-
-FAISS_INDEX_PATH=os.getenv("FAISS_INDEX_PATH")
-METADATA_PATH = os.path.join(FAISS_INDEX_PATH, "metadata.json")
-INDEX_DATA_FILE = os.path.join(FAISS_INDEX_PATH, "index_data.json")
-INDEX_FAISS_FILE = os.path.join(FAISS_INDEX_PATH, "index.faiss")
-
-# Create directory if it doesn't exist
-os.makedirs(FAISS_INDEX_PATH, exist_ok=True)
+METADATA_PATH=src.METADATA_PATH
+INDEX_DATA_FILE=src.INDEX_DATA_FILE
+INDEX_FAISS_FILE=src.INDEX_FAISS_FILE
 
 # Load metadata tracking
 if os.path.exists(METADATA_PATH):
@@ -135,33 +128,6 @@ def save_index(retrain_threshold=0.1):
 
 
 
-def load_index():
-    """Load the FAISS index and related data, ensuring consistency."""
-    global index, all_documents, all_embeddings, all_metadatas, all_ids
-
-    if os.path.exists(INDEX_DATA_FILE) and os.path.exists(INDEX_FAISS_FILE):
-        with open(INDEX_DATA_FILE, 'r') as f:
-            index_data = json.load(f)
-
-        all_documents = index_data["documents"]
-        all_embeddings = index_data["embeddings"]
-        all_metadatas = index_data["metadatas"]
-        all_ids = index_data["ids"]
-
-        index = faiss.read_index(INDEX_FAISS_FILE)
-
-        # Validate index size
-        if index.ntotal != len(all_embeddings):
-            logger.error("FAISS index size does not match stored embeddings. Rebuilding index.")
-            save_index()
-        else:
-            logger.info(f"Loaded FAISS index with {index.ntotal} documents")
-
-        return True
-    else:
-        logger.info("No existing index found. Creating new...")
-        return False
-
 def check_and_delete_chunks(url):
     """Delete all chunks associated with a specific URL from memory & index."""
     global all_documents, all_embeddings, all_metadatas, all_ids
@@ -201,6 +167,7 @@ def check_and_delete_chunks(url):
 
 
 def web_scrape_url(url):
+    global unscraped_urls
     try:
         logger.info(f"Scraping URL: {url}")
         response = session.get(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -298,8 +265,18 @@ def process_single_url(url):
         logger.error(f"Error processing URL {url}: {e}", exc_info=True)
 
 def process_urls(urls):
-    """Process URLs in parallel using multiple threads."""
-    num_workers = min(10, os.cpu_count() or 4)
-    with ThreadPoolExecutor(max_workers=num_workers) as executor:  # Adjust workers based on CPU cores
-        executor.map(process_single_url, urls)
-    return unscraped_urls
+    global unscraped_urls
+    try:
+        """Process URLs in parallel using multiple threads."""
+        num_workers = min(10, os.cpu_count() or 4)
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:  # Adjust workers based on CPU cores
+            executor.map(process_single_url, urls)
+        gc.collect()
+        save_index()
+        print(unscraped_urls)
+
+        return unscraped_urls
+   
+
+    except Exception as e:
+                    logger.error(e, exc_info=True)

@@ -98,6 +98,26 @@ function showError(message) {
     }, 3000);
 }
 
+function displayOutput(message, submittedUrls, unscrapedUrls) {
+    let outputDiv = document.getElementById("output");
+    
+    let html = `<strong>${message}</strong><br><br>`;
+    
+    // Display submitted URLs
+    html += `<h3>Submitted URLs (${submittedUrls.length}):</h3>`;
+    html += `<ul>${submittedUrls.map(url => `<li>${url}</li>`).join('')}</ul>`;
+    
+    // Display unscraped URLs
+    html += `<h3>Unscraped URLs (${unscrapedUrls.length}):</h3>`;
+    html += `<ul>${unscrapedUrls.map(url => `<li>${url}</li>`).join('')}</ul>`;
+    
+    // Add Organization-GPT button
+    html += `<button id="org-gpt-btn" class="submit-btn" onclick="window.location.href='/organization-gpt'">Organization-GPT</button>`;
+    
+    outputDiv.innerHTML = html;
+    outputDiv.style.display = "block";
+}
+
 function submitData() {
     if (baseUrls.length === 0 && extraUrls.length === 0) {
         showError("At least one URL (Base or Extra) must be provided.");
@@ -113,19 +133,15 @@ function submitData() {
     })
     .then(response => response.json())
     .then(data => {
-        alert("URLs submitted successfully!");
+        // Pass all three pieces of information to displayOutput
+        displayOutput(data.message, data.submitted_urls, data.unscraped_urls);
         baseUrls = [];
         extraUrls = [];
         updateBaseUrlList();
         updateExtraUrlList();
     })
-    .catch(error => alert("Error submitting URLs"));
-    
-}
-
-
-function displayOutput(message, urls) {
-    let outputDiv = document.getElementById("output");
-    outputDiv.innerHTML = `<strong>${message}</strong><br><br><h3>Stored URLs:</h3><ul>${urls.map(url => `<li>${url}</li>`).join('')}</ul>`;
-    outputDiv.style.display = "block";
+    .catch(error => {
+        showError("Error submitting URLs");
+        console.error(error);
+    });
 }
