@@ -13,25 +13,32 @@ This project is built to ensure data security and confidentiality by allowing or
 ## Setup and Installation
 Follow the steps below to install and run the application:
 
-### 1. Set Up Environment
+### 1. Create a Virtual Environment
+It is recommended to use a virtual environment to manage dependencies. Run the following command:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows use 'venv\Scripts\activate'
+```
+
+### 2. Set Up Environment
 Ensure you have Python installed (preferably Python 3.8 or later). Install necessary dependencies by running:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Run Setup Script
+### 3. Run Setup Script
 Execute the setup script to initialize the environment:
 ```bash
 python setup.py
 ```
 
-### 3. Configure FAISS Index Path
+### 4. Configure FAISS Index Path
 Modify the `.env` file to set the FAISS index path:
 ```
 FAISS_INDEX_PATH=/path/to/your/index
 ```
 
-### 4. Run the Application
+### 5. Run the Application
 Start the application by running:
 ```bash
 python app.py
