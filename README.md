@@ -1,4 +1,4 @@
-# Organization Specific LLM APP
+# Organization Specific LLM APP🤖
 
 ## Description
 This project is built to ensure data security and confidentiality by allowing organizations to create their own LLM (Large Language Model) instead of relying on online services like ChatGPT or Claude. The application processes various multimedia data formats such as SQL databases, URLs, Excel sheets, Word documents, and PDFs to make them usable for GPT-based interactions.
