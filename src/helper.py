@@ -63,7 +63,7 @@ def fetch_urls_from_sitemap(sitemap_url: str) -> List[str]:
         sitemap_elements = root.findall('.//ns:sitemap/ns:loc', namespace)
         if sitemap_elements:
             nested_urls = [fetch_urls_from_sitemap(sitemap.text) for sitemap in sitemap_elements]
-            return [url for sublist in nested_urls for url in sublist]
+            return set([url for sublist in nested_urls for url in sublist])
         
         # Otherwise, extract all URLs
         url_elements = root.findall('.//ns:url/ns:loc', namespace)
