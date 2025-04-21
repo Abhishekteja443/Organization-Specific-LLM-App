@@ -1,4 +1,4 @@
-# Organization Specific LLM APP
+# Organization Specific LLM APP🤖
 
 ## Description
 This project is built to ensure data security and confidentiality by allowing organizations to create their own LLM (Large Language Model) instead of relying on online services like ChatGPT or Claude. The application processes various multimedia data formats such as SQL databases, URLs, Excel sheets, Word documents, and PDFs to make them usable for GPT-based interactions.
@@ -13,25 +13,40 @@ This project is built to ensure data security and confidentiality by allowing or
 ## Setup and Installation
 Follow the steps below to install and run the application:
 
-### 1. Set Up Environment
+### 1. Create a Virtual Environment
+It is recommended to use a virtual environment to manage dependencies. Run the following command:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows use 'venv\Scripts\activate'
+```
+
+### 2. Set Up Environment
 Ensure you have Python installed (preferably Python 3.8 or later). Install necessary dependencies by running:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Run Setup Script
+### 3. Download and Install Llama 3.2 and Nomic Embeddings
+Install **Ollama** to download and use Llama 3.2 and Nomic Embeddings:
+```bash
+pip install ollama
+ollama pull llama3.2
+ollama pull nomic-embed
+```
+
+### 4. Run Setup Script
 Execute the setup script to initialize the environment:
 ```bash
 python setup.py
 ```
 
-### 3. Configure FAISS Index Path
+### 5. Configure FAISS Index Path
 Modify the `.env` file to set the FAISS index path:
 ```
 FAISS_INDEX_PATH=/path/to/your/index
 ```
 
-### 4. Run the Application
+### 6. Run the Application
 Start the application by running:
 ```bash
 python app.py
@@ -42,4 +57,3 @@ Feel free to fork this repository and contribute enhancements via pull requests.
 
 ## License
 This project is licensed under the **MIT License**.
-
