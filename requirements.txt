@@ -2,10 +2,12 @@ requests
 beautifulsoup4
 ollama
 langchain
+langchain-community
 datetime
 typing
 psutil
 numpy
 flask
 faiss-cpu
+python-dotenv
 -e .

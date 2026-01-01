@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import ollama
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from datetime import datetime, timezone
 import time
 from xml.etree import ElementTree
