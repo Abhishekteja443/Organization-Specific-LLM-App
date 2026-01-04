@@ -10,4 +10,5 @@ numpy
 flask
 faiss-cpu
 python-dotenv
+setuptools
 -e .

@@ -16,6 +16,8 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from src import logger
 import src
+from threading import Lock
+data_lock = Lock()
 
 METADATA_PATH=src.METADATA_PATH
 INDEX_DATA_FILE=src.INDEX_DATA_FILE
@@ -42,7 +44,7 @@ session = requests.Session()
 
 unscraped_urls=[]
 
-def fetch_urls_from_sitemap(sitemap_url: str) -> List[str]:
+def fetch_urls_from_sitemap(sitemap_url: str) -> set[str]:
     """
     Recursively fetches all URLs from a sitemap or nested sitemaps.
     
@@ -152,13 +154,13 @@ def check_and_delete_chunks(url):
         del url_to_chunks[url]
         save_metadata()
 
-        if len(all_embeddings) > 0:
-            dimension = len(all_embeddings[0])
-            index = faiss.IndexIVFFlat(faiss.IndexFlatL2(dimension), dimension, min(len(all_embeddings) // 10, 200) if len(all_embeddings) > 500 else 5 , faiss.METRIC_L2)
-            index.train(np.array(all_embeddings, dtype=np.float32))
-            index.add(np.array(all_embeddings, dtype=np.float32))
-        else:
-            index = None
+        # if len(all_embeddings) > 0:
+        #     dimension = len(all_embeddings[0])
+        #     index = faiss.IndexIVFFlat(faiss.IndexFlatL2(dimension), dimension, min(len(all_embeddings) // 10, 200) if len(all_embeddings) > 500 else 5 , faiss.METRIC_L2)
+        #     index.train(np.array(all_embeddings, dtype=np.float32))
+        #     index.add(np.array(all_embeddings, dtype=np.float32))
+        # else:
+        #     index = None
 
         logger.info(f"Deleted all chunks for {url}.")
     else:
@@ -171,37 +173,69 @@ def web_scrape_url(url):
     try:
         logger.info(f"Scraping URL: {url}")
         response = session.get(url, headers={"User-Agent": "Mozilla/5.0"})
+        response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
 
+        page_title = soup.title.string.strip() if soup.title else "Unknown"
+
+        # Infer page type (simple heuristics)
+        if "admission" in url:
+            page_type = "admissions"
+        elif "course" in url or "catalog" in url:
+            page_type = "course"
+        elif "policy" in url:
+            page_type = "policy"
+        elif "news" in url:
+            page_type = "news"
+        else:
+            page_type = "generic"
+
+        # Infer department
+        department = "Unknown"
+        if "cs" in url or "computer" in url:
+            department = "Computer Science"
+        elif "admission" in url:
+            department = "Admissions"
+        elif "registrar" in url:
+            department = "Registrar"
+
+        # Extract heading hierarchy
+        headings = []
+        for tag in soup.find_all(["h1", "h2", "h3"]):
+            headings.append(tag.get_text(strip=True))
+
+        # Extract main text (your existing logic)
         scraped_data = []
         seen_texts = set()
-        
-        # Extract only relevant sections (modify the selector if needed)
-        for tag in soup.find_all(["p", "span", "h1", "h2", "h3", "h4", "h5", "h6", "a", "li", "td"]):
+
+        for tag in soup.find_all(["p", "li", "td"]):
             text = tag.get_text(strip=True)
+            if text and text not in seen_texts:
+                seen_texts.add(text)
+                scraped_data.append(text)
         
-            # Handling anchor tags separately for links
-            if tag.name == "a" and tag.get("href"):
-                href = tag.get("href")
-                icon = tag.find("i")
-                if icon:
-                    text = icon.get("class", [])
-                    text = " ".join(text)
-                    pattern = r"fa-([a-zA-Z0-9\-]+)"
-                    text = re.findall(pattern, text)
-                    text = " ".join(text)
-                if text and (text, href) not in seen_texts:
-                    seen_texts.add((text, href))
-                    scraped_data.append(f"{text}: {href}")
-            else:
-                if text and text not in seen_texts:
-                    seen_texts.add(text)
-                    scraped_data.append(text)
-        scraped_data=" ".join(scraped_data)
-        return scraped_data
+        for tag in soup.find_all("a"):
+            anchor_text = tag.get_text(strip=True)
+            if anchor_text and len(anchor_text) > 3:
+                if anchor_text.lower() not in ["click here", "read more", "learn more"]:
+                    if anchor_text not in seen_texts:
+                        seen_texts.add(anchor_text)
+                        scraped_data.append(anchor_text)
+
+        return {
+            "text": " ".join(scraped_data),
+            "metadata": {
+                "page_title": page_title,
+                "page_type": page_type,
+                "department": department,
+                "heading_path": headings[:5],  # limit size
+                "last_modified": response.headers.get("Last-Modified")
+            }
+        }
     
     except requests.exceptions.RequestException as e:
-        unscraped_urls.append(url)
+        with data_lock:
+            unscraped_urls.append(url)
         logger.error(f"Error scraping URL {url}: {e}")
         return ""
     
@@ -231,12 +265,13 @@ def process_single_url(url):
         check_and_delete_chunks(url)
         logger.info(f"Processing URL: {url}")
 
-        data = web_scrape_url(url)
-        if not data:
+        result = web_scrape_url(url)
+        if not result or not result["text"]:
             logger.warning(f"No data found for {url}. Skipping...")
             return
-
-        chunks = chunk_text(data)
+        text = result["text"]
+        page_metadata = result["metadata"]
+        chunks = chunk_text(text)
         if not chunks:
             logger.warning(f"No chunks created for {url}. Skipping...")
             return
@@ -247,15 +282,21 @@ def process_single_url(url):
         for i, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
             chunk_id = f"{url}_chunk_{i+1}"
             url_chunks.append(chunk_id)
-
-            all_documents.append(chunk)
-            all_embeddings.append(np.array(embedding, dtype=np.float16))  # Reduce memory
-            all_metadatas.append({
-                "source_url": url,
-                "chunk_size": len(chunk),
-                "crawled_at": datetime.now(timezone.utc).isoformat()
-            })
-            all_ids.append(chunk_id)
+            with data_lock:
+                all_documents.append(chunk)
+                all_embeddings.append(np.array(embedding, dtype=np.float16))
+                all_metadatas.append({
+                    "source_url": url,
+                    "chunk_id": chunk_id,
+                    "page_title": page_metadata["page_title"],
+                    "page_type": page_metadata["page_type"],
+                    "department": page_metadata["department"],
+                    "heading_path": page_metadata["heading_path"],
+                    "chunk_size": len(chunk),
+                    "crawled_at": datetime.now(timezone.utc).isoformat(),
+                    "last_modified": page_metadata["last_modified"]
+                })
+                all_ids.append(chunk_id)
 
         url_to_chunks[url] = url_chunks
         save_metadata()
