@@ -14,7 +14,6 @@ This project is built to ensure data security and confidentiality by allowing or
 - **Llama 3.2** for streaming responses
 - **Request monitoring** and analytics
 - **Batch re-indexing** capability
-- **Feedback collection** system
 
 ## Setup and Installation
 
@@ -105,9 +104,36 @@ Adjust in `.env`:
 MAX_CONTEXT_TOKENS=4000
 ```
 
+Run the comprehensive test suite:
+```bash
+python -m pytest Tests/test_app.py -v
+# or
+python Tests/test_app.py
+```
+
+### FAISS Index Issues
+```bash
+rm -rf faiss_store/
+python app.py
+# Resubmit URLs through admin panel
+```
+
+### Model Not Loading
+Ensure Ollama is running:
+```bash
+ollama serve
+# In another terminal:
+ollama pull llama3.2:3b
+ollama pull nomic-embed-text
+```
+
+### Rate Limit Exceeded
+Reduce request frequency or adjust `RATE_LIMIT_REQUESTS` in `.env`
+
 ## Contributing
 Feel free to fork this repository and contribute enhancements via pull requests.
 
 ## License
 This project is licensed under the **MIT License**.
+
 
