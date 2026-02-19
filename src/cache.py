@@ -1,6 +1,3 @@
-"""
-Caching utilities for query results and embeddings
-"""
 import hashlib
 import functools
 from typing import Callable, Any, Tuple
@@ -19,7 +16,6 @@ class CacheEntry:
 
 
 class QueryCache:
-    """Thread-safe cache for query results."""
     
     def __init__(self, max_size: int = 500, ttl: int = 3600):
         self.cache = {}
@@ -28,11 +24,9 @@ class QueryCache:
         self.lock = threading.Lock()
     
     def _hash_query(self, query: str) -> str:
-        """Create a hash key for the query."""
         return hashlib.md5(query.lower().encode()).hexdigest()
     
     def get(self, query: str) -> Tuple[bool, Any]:
-        """Get cached result if available and not expired."""
         try:
             key = self._hash_query(query)
             with self.lock:
@@ -50,11 +44,9 @@ class QueryCache:
             return False, None
     
     def set(self, query: str, value: Any):
-        """Store result in cache."""
         try:
             key = self._hash_query(query)
             with self.lock:
-                # Simple LRU: remove oldest if at capacity
                 if len(self.cache) >= self.max_size:
                     oldest_key = min(self.cache.keys(), key=lambda k: self.cache[k].timestamp)
                     del self.cache[oldest_key]
@@ -65,25 +57,21 @@ class QueryCache:
             logger.error(f"Cache set error: {e}")
     
     def clear(self):
-        """Clear entire cache."""
         with self.lock:
             size = len(self.cache)
             self.cache.clear()
             logger.info(f"Cleared cache ({size} entries)")
 
 
-# Global cache instance
 query_cache = QueryCache(max_size=500, ttl=3600)
 
 
 def cached_result(ttl: int = 3600):
-    """Decorator to cache function results."""
     def decorator(func: Callable) -> Callable:
         cache = QueryCache(ttl=ttl)
         
         @functools.wraps(func)
         def wrapper(query: str, *args, **kwargs):
-            # Only cache if first argument is a string query
             hit, cached_value = cache.get(query)
             if hit:
                 return cached_value

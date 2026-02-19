@@ -1,6 +1,3 @@
-"""
-GPT Backend - LLM interaction and retrieval
-"""
 from src.faiss_manager import faiss_manager
 from src.cache import cached_result
 from src import logger

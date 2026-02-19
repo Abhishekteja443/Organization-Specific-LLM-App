@@ -1,6 +1,3 @@
-"""
-Chat Engine - Streaming chat responses with conversation history management
-"""
 import json
 import ollama
 import threading
@@ -16,21 +13,15 @@ MAX_CONTEXT_TOKENS = 4000
 
 
 def count_tokens_approximate(text: str) -> int:
-    """Approximate token count (1 token ≈ 4 characters)."""
     return len(text) // 4
 
 
 def manage_conversation_history(max_tokens: int = MAX_CONTEXT_TOKENS):
-    """
-    Manage conversation history to stay within token limits.
-    Keeps most recent messages within token budget.
-    """
     global conversation_history
     
     total_tokens = sum(count_tokens_approximate(msg.get("content", "")) for msg in conversation_history)
     
     while total_tokens > max_tokens and len(conversation_history) > 1:
-        # Remove oldest message pair (user + assistant)
         if len(conversation_history) >= 2:
             removed_msg = conversation_history.pop(0)
             total_tokens -= count_tokens_approximate(removed_msg.get("content", ""))
@@ -38,14 +29,9 @@ def manage_conversation_history(max_tokens: int = MAX_CONTEXT_TOKENS):
 
 
 def stream_chat_response(query: str):
-    """
-    Stream chat response with proper error handling and conversation management.
-    Yields: (content_chunk, source_url)
-    """
     global conversation_history
     
     try:
-        # Validate query
         if not query or not isinstance(query, str):
             logger.warning("Invalid query received")
             yield "Error: Invalid query", None
@@ -56,7 +42,6 @@ def stream_chat_response(query: str):
             yield "Error: Query is too long", None
             return
         
-        # Route query to appropriate handler
         route = route_query(query)
         
         if route == "meta":
@@ -71,14 +56,12 @@ def stream_chat_response(query: str):
             yield response, None
             return
         
-        # Retrieve context if not chitchat
         relevant_text = ""
         source_url = None
         
         if route != "chitchat":
             try:
                 relevant_text, source_url = gpt_backend.retrieve_relevant_chunks(query,5)
-                # print(relevant_text)
                 if relevant_text:
                     logger.info(f"Retrieved context from: {source_url}")
             except Exception as e:
@@ -86,10 +69,8 @@ def stream_chat_response(query: str):
                 relevant_text = ""
                 source_url = "Unknown"
         
-        # Build system prompt
         system_prompt = build_system_prompt(route)
         
-        # Manage history and build messages
         with history_lock:
             manage_conversation_history()
             
@@ -103,8 +84,7 @@ def stream_chat_response(query: str):
                 })
             
             messages.append({"role": "user", "content": query})
-        
-        # Stream response from LLM
+
         response_text = ""
         
         try:
@@ -123,8 +103,7 @@ def stream_chat_response(query: str):
             error_msg = "Error generating response. Please try again."
             yield error_msg, None
             response_text = error_msg
-        
-        # Update conversation history
+
         with history_lock:
             conversation_history.append({"role": "user", "content": query})
             conversation_history.append({"role": "assistant", "content": response_text})

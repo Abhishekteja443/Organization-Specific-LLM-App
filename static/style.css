@@ -1,12 +1,9 @@
-/* General Styles */
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f4;
     margin: 0;
     padding: 0;
 }
-
-/* Container */
 .container {
     max-width: 500px;
     margin: 50px auto;
@@ -16,20 +13,18 @@ body {
     border-radius: 8px;
 }
 
-/* Headings */
 h2 {
     text-align: center;
     color: #333;
 }
 
-/* Form Labels */
+
 label {
     font-weight: bold;
     display: block;
     margin-top: 10px;
 }
 
-/* Input Fields & Button Groups */
 .input-group {
     display: flex;
     gap: 10px;
@@ -56,7 +51,6 @@ button:hover {
     background-color: #0056b3;
 }
 
-/* Submit Button */
 .submit-btn {
     width: 100%;
     background-color: #28a745;
@@ -67,7 +61,6 @@ button:hover {
     background-color: #218838;
 }
 
-/* Error Message */
 .error {
     color: red;
     text-align: center;
@@ -75,7 +68,6 @@ button:hover {
     margin-top: 10px;
 }
 
-/* URL List */
 ul {
     list-style: none;
     padding: 0;
@@ -99,7 +91,6 @@ ul li button:hover {
     background-color: #c82333;
 }
 
-/* Responsive Design */
 @media (max-width: 600px) {
     .container {
         max-width: 90%;

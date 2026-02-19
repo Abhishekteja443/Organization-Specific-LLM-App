@@ -16,7 +16,7 @@
             flex-direction: column;
             height: 100vh;
             background-color: #f5f5f5;
-            overflow: hidden; /* Prevents scrolling on the entire page */
+            overflow: hidden;
         }
         .header {
             background-color: #2c3e50;
@@ -121,7 +121,6 @@
     </div>
     
     <div class="chat-container" id="chat-container">
-        <!-- Messages will appear here -->
     </div>
     
     <div class="input-container">
@@ -140,16 +139,13 @@
             let currentAssistantMessage = null;
             let currentCursor = null;
             
-            // Auto-resize textarea
             userInput.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = (this.scrollHeight > 150 ? '150px' : this.scrollHeight + 'px');
             });
             
-            // Send message when button is clicked
             sendButton.addEventListener('click', sendMessage);
             
-            // Send message when Enter is pressed (but allow Shift+Enter for new lines)
             userInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -161,37 +157,28 @@
                 const message = userInput.value.trim();
                 if (!message) return;
                 
-                // Add user message to chat
                 addMessage(message, 'user');
                 
-                // Clear input
                 userInput.value = '';
                 userInput.style.height = 'auto';
                 
-                // Create assistant message container with cursor
                 currentAssistantMessage = document.createElement('div');
                 currentAssistantMessage.className = 'message assistant-message';
                 
-                // Add blinking cursor
                 currentCursor = document.createElement('span');
                 currentCursor.className = 'cursor';
                 currentAssistantMessage.appendChild(currentCursor);
                 
-                // Add to chat container
                 chatContainer.appendChild(currentAssistantMessage);
                 
-                // Scroll to bottom
                 chatContainer.scrollTop = chatContainer.scrollHeight;
                 
-                // Disable send button while generating
                 sendButton.disabled = true;
                 
-                // Close any existing SSE connection
                 if (eventSource) {
                     eventSource.close();
                 }
                 
-                // Connect to SSE endpoint
                 eventSource = new EventSource(`/chat-stream?query=${encodeURIComponent(message)}`);
 
                 let fullResponse = '';
@@ -199,7 +186,6 @@
                 eventSource.onmessage = function(event) {
                     const data = JSON.parse(event.data);
                     
-                    // Check if there's an error
                     if (data.error) {
                         currentAssistantMessage.textContent = 'Sorry, there was an error processing your request. Please try again.';
                         eventSource.close();
@@ -207,18 +193,15 @@
                         return;
                     }
 
-                    // Append new content
                     if (data.content) {
                         fullResponse += data.content;
                         const formattedText = fullResponse.replace(/\n/g, '<br>');
                         currentAssistantMessage.innerHTML = formattedText;
                         currentAssistantMessage.appendChild(currentCursor);
 
-                        // Auto-scroll to the bottom as new messages arrive
                         chatContainer.scrollTop = chatContainer.scrollHeight;
                     }
 
-                    // Check if stream is done
                     if (data.done) {
                         if (currentCursor && currentCursor.parentNode) {
                             currentCursor.parentNode.removeChild(currentCursor);

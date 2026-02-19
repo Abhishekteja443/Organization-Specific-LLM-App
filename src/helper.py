@@ -1,16 +1,13 @@
+from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 import ollama
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from datetime import datetime, timezone
-import time
 from xml.etree import ElementTree
 from typing import List, Set
 import os
-import json
-import numpy as np
 import gc
-import re
 from concurrent.futures import ThreadPoolExecutor
 from src import logger
 from src.faiss_manager import faiss_manager
@@ -22,7 +19,6 @@ data_lock = Lock()
 
 session = requests.Session()
 
-# Configure retry strategy for robustness
 retry_strategy = Retry(
     total=3,
     backoff_factor=1,
@@ -37,18 +33,59 @@ session.headers.update({"User-Agent": "Mozilla/5.0 (Organization-LLM-App)"})
 unscraped_urls = []
 
 
+def fetch_urls_from_domain(domain: str, max_depth: int = 3, visited: Set[str] = None, graph: dict = None) -> tuple[Set[str], dict]:
+    if visited is None:
+        visited = set()
+    if graph is None:
+        graph = {}
+    
+    if domain in visited or max_depth == 0:
+        return visited, graph
+    
+    visited.add(domain)
+    graph[domain] = {"children": [], "parent": None}
+    
+    try:
+        logger.info(f"Fetching URLs from domain: {domain} (depth: {max_depth})")
+        response = session.get(domain, timeout=10)
+        response.raise_for_status()
+        
+        soup = BeautifulSoup(response.text, "html.parser")
+        main_tag = soup.find("main")
+        
+        if not main_tag:
+            main_tag = soup
+        
+        links = set()
+        for anchor in main_tag.find_all("a", href=True):
+            href = anchor.get("href", "").strip()
+            if href and not href.startswith("#"):
+
+                absolute_url = urljoin(domain, href)
+
+                if domain.rstrip("/") in absolute_url:
+                    links.add(absolute_url)
+                    if absolute_url not in graph:
+                        graph[absolute_url] = {"children": [], "parent": domain}
+                    if absolute_url not in graph[domain]["children"]:
+                        graph[domain]["children"].append(absolute_url)
+        
+        logger.info(f"Found {len(links)} links on {domain}")
+        
+        for link in links:
+            if link not in visited:
+                fetch_urls_from_domain(link, max_depth - 1, visited, graph)
+        
+        return visited, graph
+    
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching domain {domain}: {e}")
+        return visited, graph
+    except Exception as e:
+        logger.error(f"Unexpected error fetching domain {domain}: {e}", exc_info=True)
+        return visited, graph
+
 def fetch_urls_from_sitemap(sitemap_url: str, max_retries: int = 3) -> Set[str]:
-    """
-    Recursively fetches all URLs from a sitemap or nested sitemaps.
-    Includes retry logic for robustness.
-    
-    Args:
-        sitemap_url (str): The root or nested sitemap URL.
-        max_retries (int): Number of retries for failed requests.
-    
-    Returns:
-        Set[str]: Set of all URLs to be crawled.
-    """
     try:
         logger.info(f"Fetching URLs from sitemap: {sitemap_url}")
         
@@ -58,13 +95,11 @@ def fetch_urls_from_sitemap(sitemap_url: str, max_retries: int = 3) -> Set[str]:
         root = ElementTree.fromstring(response.content)
         namespace = {'ns': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
         
-        # Check for nested sitemaps
         sitemap_elements = root.findall('.//ns:sitemap/ns:loc', namespace)
         if sitemap_elements:
             nested_urls = [fetch_urls_from_sitemap(sitemap.text) for sitemap in sitemap_elements]
             return set([url for sublist in nested_urls for url in sublist])
-        
-        # Otherwise, extract all URLs
+
         url_elements = root.findall('.//ns:url/ns:loc', namespace)
         urls = set(url.text for url in url_elements if url.text)
         logger.info(f"Extracted {len(urls)} URLs from sitemap")
@@ -84,12 +119,6 @@ def fetch_urls_from_sitemap(sitemap_url: str, max_retries: int = 3) -> Set[str]:
 
 
 def web_scrape_url(url: str) -> dict:
-    """
-    Scrape content from URL with improved error handling and timeouts.
-    
-    Returns:
-        dict: Contains 'text' and 'metadata' keys, or empty dict on failure
-    """
     try:
         logger.info(f"Scraping URL: {url}")
         response = session.get(url, timeout=15)
@@ -97,13 +126,11 @@ def web_scrape_url(url: str) -> dict:
         
         soup = BeautifulSoup(response.text, "html.parser")
         
-        # Remove script and style elements
         for script in soup(["script", "style"]):
             script.decompose()
         
         page_title = soup.title.string.strip() if soup.title else "Unknown"
         
-        # Infer page type (heuristics)
         page_type = "generic"
         if any(x in url.lower() for x in ["admission", "enroll", "apply"]):
             page_type = "admissions"
@@ -112,17 +139,14 @@ def web_scrape_url(url: str) -> dict:
         elif any(x in url.lower() for x in ["policy", "rule", "regulation"]):
             page_type = "policy"
         
-        # Infer department
         department = "Unknown"
         if any(x in url.lower() for x in ["cs", "computer", "engineering"]):
             department = "Computer Science"
         elif "admission" in url.lower():
             department = "Admissions"
-        
-        # Extract headings
+
         headings = [tag.get_text(strip=True) for tag in soup.find_all(["h1", "h2", "h3"])[:5]]
-        
-        # Extract text with deduplication
+
         seen_texts = set()
         scraped_data = []
         
@@ -131,8 +155,7 @@ def web_scrape_url(url: str) -> dict:
             if text and len(text) > 3 and text not in seen_texts:
                 seen_texts.add(text)
                 scraped_data.append(text)
-        
-        # Add meaningful anchor text
+
         for tag in soup.find_all("a"):
             anchor_text = tag.get_text(strip=True)
             if (anchor_text and len(anchor_text) > 3 and 
@@ -177,14 +200,12 @@ def web_scrape_url(url: str) -> dict:
 
 
 def chunk_text(text: str, chunk_size: int = 600, chunk_overlap: int = 150) -> List[str]:
-    """Split text into smaller chunks with overlap for better retrieval accuracy."""
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size, 
         chunk_overlap=chunk_overlap
     )
     chunks = text_splitter.split_text(text)
     
-    # Remove any empty chunks
     chunks = [c.strip() for c in chunks if c.strip()]
     
     logger.info(f"Created {len(chunks)} chunks from text")
@@ -192,12 +213,10 @@ def chunk_text(text: str, chunk_size: int = 600, chunk_overlap: int = 150) -> Li
 
 
 def deduplicate_chunks(chunks: List[str]) -> List[str]:
-    """Remove duplicate chunks."""
     seen = set()
     unique_chunks = []
     
     for chunk in chunks:
-        # Use hash of chunk to detect duplicates
         chunk_hash = hash(chunk.lower())
         if chunk_hash not in seen:
             seen.add(chunk_hash)
@@ -210,7 +229,6 @@ def deduplicate_chunks(chunks: List[str]) -> List[str]:
 
 
 def embed_texts(chunks: List[str]) -> List:
-    """Parallel embedding of text chunks using Ollama API."""
     try:
         with ThreadPoolExecutor(max_workers=5) as executor:
             embeddings = list(executor.map(
@@ -227,7 +245,6 @@ def embed_texts(chunks: List[str]) -> List:
 
 
 def process_single_url(url: str):
-    """Scrape, chunk, embed, and store data for a single URL."""
     try:
         faiss_manager.check_and_delete_chunks(url)
         logger.info(f"Processing URL: {url}")
@@ -245,7 +262,6 @@ def process_single_url(url: str):
             logger.warning(f"No chunks created for {url}. Skipping...")
             return
         
-        # Deduplicate chunks
         chunks = deduplicate_chunks(chunks)
         embeddings = embed_texts(chunks)
 
@@ -253,7 +269,6 @@ def process_single_url(url: str):
             logger.error(f"Embedding count mismatch for {url}")
             return
         
-        # Build metadata for each chunk
         chunk_metadatas = [
             {
                 "source_url": url,
@@ -278,7 +293,6 @@ def process_single_url(url: str):
 
 
 def process_urls(urls: Set[str]) -> List[str]:
-    """Process URLs in parallel using multiple threads."""
     global unscraped_urls
     
     try:
@@ -286,7 +300,6 @@ def process_urls(urls: Set[str]) -> List[str]:
         num_workers = min(5, os.cpu_count() or 2)
         
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            # Wait for all futures to complete to ensure chunks/embeddings are added
             list(executor.map(process_single_url, urls))
 
         gc.collect()

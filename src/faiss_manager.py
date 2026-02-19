@@ -34,10 +34,9 @@ class FAISSManager:
         self.all_ids = []
         self.url_to_chunks = {}
         
-        self.data_lock = threading.RLock()  # Use RLock to allow reentrant locking
+        self.data_lock = threading.RLock() 
         self._initialized = True
-        
-        # Ensure FAISS index directory exists and create empty metadata file if missing
+
         try:
             index_dir = os.path.dirname(self.METADATA_PATH) or "."
             os.makedirs(index_dir, exist_ok=True)
@@ -52,7 +51,6 @@ class FAISSManager:
         self._load_index()
     
     def _load_metadata(self):
-        """Load metadata tracking URL to chunk mappings."""
         if os.path.exists(self.METADATA_PATH):
             try:
                 with open(self.METADATA_PATH, 'r') as f:
@@ -65,7 +63,6 @@ class FAISSManager:
             self.url_to_chunks = {}
     
     def _load_index(self):
-        """Load FAISS index and embeddings from disk."""
         if not os.path.exists(self.INDEX_FAISS_FILE) or not os.path.exists(self.INDEX_DATA_FILE):
             logger.info("No existing FAISS index found. Will create on first save.")
             return
@@ -86,10 +83,8 @@ class FAISSManager:
                 
                 quantizer = faiss.IndexFlatL2(dimension)
                 self.index = faiss.IndexIVFFlat(quantizer, dimension, nlist, faiss.METRIC_L2)
-                self.index = faiss.IndexIDMap(self.index)
                 self.index.train(np.array(self.all_embeddings, dtype=np.float32))
                 self.index.add(np.array(self.all_embeddings, dtype=np.float32))
-                # Increase nprobe for better retrieval accuracy (trades speed for quality)
                 self.index.nprobe = min(20, nlist // 2)
                 
                 logger.info(f"FAISS Index Loaded: {self.index.ntotal} vectors, {nlist} clusters, nprobe={self.index.nprobe}")
@@ -104,12 +99,11 @@ class FAISSManager:
             self.index = None
     
     def save_metadata(self):
-        """Save metadata tracking URL to chunk mappings."""
         try:
             logger.info("Starting metadata save...")
             with self.data_lock:
                 logger.info("Acquired data lock for metadata save")
-                # Ensure directory exists before writing
+
                 meta_dir = os.path.dirname(self.METADATA_PATH) or "."
                 logger.info(f"Metadata directory: {meta_dir}")
                 os.makedirs(meta_dir, exist_ok=True)
@@ -125,7 +119,6 @@ class FAISSManager:
             logger.error(f"Unexpected error saving metadata: {e}", exc_info=True)
     
     def save_index(self, retrain_threshold=0.1):
-        """Efficiently save FAISS index using Approximate Nearest Neighbor (ANN)."""
         try:
             with self.data_lock:
                 if not self.all_embeddings:
@@ -138,7 +131,7 @@ class FAISSManager:
                     "metadatas": self.all_metadatas,
                     "ids": self.all_ids
                 }
-                # Ensure index directory exists before writing files
+
                 index_dir = os.path.dirname(self.INDEX_DATA_FILE) or "."
                 os.makedirs(index_dir, exist_ok=True)
 
@@ -160,9 +153,8 @@ class FAISSManager:
                     logger.info("Adding new vectors without retraining.")
                 
                 self.index.add(embedding_array)
-                # Increase nprobe for better retrieval accuracy
                 self.index.nprobe = min(20, nlist // 2)
-                # Ensure faiss file directory exists and write index
+
                 faiss_dir = os.path.dirname(self.INDEX_FAISS_FILE) or "."
                 os.makedirs(faiss_dir, exist_ok=True)
                 faiss.write_index(self.index, self.INDEX_FAISS_FILE)
@@ -173,7 +165,6 @@ class FAISSManager:
             logger.error(f"Error saving FAISS index: {e}", exc_info=True)
     
     def check_and_delete_chunks(self, url: str):
-        """Delete all chunks associated with a specific URL from memory & index."""
         try:
             with self.data_lock:
                 if url in self.url_to_chunks and self.url_to_chunks[url]:
@@ -206,16 +197,6 @@ class FAISSManager:
             logger.error(f"Error deleting chunks for {url}: {e}", exc_info=True)
     
     def retrieve_relevant_chunks(self, query: str, top_n: int = 10) -> Tuple[str, str]:
-        """
-        Retrieve relevant chunks from FAISS with distance-based filtering.
-        
-        Args:
-            query: User query text
-            top_n: Number of top candidates to retrieve (default 10, higher = more thorough)
-        
-        Returns:
-            Tuple of (combined_chunks, source_url)
-        """
         try:
             import ollama
             
@@ -223,15 +204,13 @@ class FAISSManager:
                 logger.warning("FAISS index is empty or not loaded")
                 return "", "Unknown"
             
-            # Generate query embedding
+
             query_embedding = ollama.embeddings(model="nomic-embed-text:latest", prompt=query)["embedding"]
             query_vector = np.array(query_embedding, dtype=np.float32).reshape(1, -1)
             
-            # Search FAISS index with expanded top_n for better filtering
             distances, indices = self.index.search(query_vector, min(top_n, len(self.all_documents)))
             
-            # Filter by distance threshold (lower = more similar, L2 distance)
-            # Typically < 1.5 indicates good semantic similarity
+
             distance_threshold = 1.5
             
             retrieved_chunks = []
@@ -245,8 +224,7 @@ class FAISSManager:
                     retrieved_chunks.append(self.all_documents[idx])
                     retrieved_metadatas.append(self.all_metadatas[idx])
                     retrieved_scores.append(relevance_score)
-            
-            # If no chunks pass the threshold, return top 3 anyway
+
             if not retrieved_chunks:
                 logger.info(f"No chunks passed distance threshold (< {distance_threshold}), returning top 3 by distance")
                 for idx in indices[0][:3]:
@@ -254,8 +232,7 @@ class FAISSManager:
                         retrieved_chunks.append(self.all_documents[idx])
                         retrieved_metadatas.append(self.all_metadatas[idx])
                         retrieved_scores.append(0.0)
-            
-            # Get most common source URL
+
             source_url_list = [meta.get("source_url", "Unknown") for meta in retrieved_metadatas]
             source_url = max(set(source_url_list), key=source_url_list.count) if source_url_list else "Unknown"
             print(retrieved_chunks)
@@ -268,7 +245,6 @@ class FAISSManager:
             return "", "Unknown"
     
     def add_chunks(self, url: str, chunks: List[str], embeddings: List, metadatas: List[Dict]):
-        """Add chunks to the index."""
         try:
             with self.data_lock:
                 logger.info(f"Adding {len(chunks)} chunks for {url}")
@@ -291,7 +267,6 @@ class FAISSManager:
             logger.error(f"Error adding chunks for {url}: {e}", exc_info=True)
     
     def get_index_stats(self) -> Dict:
-        """Get current index statistics."""
         with self.data_lock:
             return {
                 "total_documents": len(self.all_documents),
