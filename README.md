@@ -14,7 +14,6 @@ This project is built to ensure data security and confidentiality by allowing or
 - **Llama 3.2** for streaming responses
 - **Request monitoring** and analytics
 - **Batch re-indexing** capability
-- **Feedback collection** system
 
 ## Setup and Installation
 
@@ -105,38 +104,12 @@ Adjust in `.env`:
 MAX_CONTEXT_TOKENS=4000
 ```
 
-## Security Features
-
-✅ **Input Validation** - Prevents XSS and injection attacks  
-✅ **Rate Limiting** - Token bucket algorithm per IP  
-✅ **CORS Protection** - Configurable origin whitelist  
-✅ **Error Handling** - Graceful error messages  
-✅ **Timeout Protection** - 15-second timeout on requests  
-✅ **Content Length Limits** - Max 16MB  
-✅ **Environment-based Config** - No hardcoded secrets  
-
-## Performance Features
-
-✅ **Query Caching** - 50-80% faster repeated queries  
-✅ **Chunk Deduplication** - 30% smaller indexes  
-✅ **Token-based History** - Prevents memory overflow  
-✅ **Parallel Scraping** - Multi-threaded indexing  
-✅ **Retry Logic** - Automatic network error recovery  
-
-## Testing
-
 Run the comprehensive test suite:
 ```bash
 python -m pytest Tests/test_app.py -v
 # or
 python Tests/test_app.py
 ```
-
-## Documentation
-
-See [IMPROVEMENTS.md](IMPROVEMENTS.md) for detailed documentation of all improvements.
-
-## Troubleshooting
 
 ### FAISS Index Issues
 ```bash
@@ -162,4 +135,5 @@ Feel free to fork this repository and contribute enhancements via pull requests.
 
 ## License
 This project is licensed under the **MIT License**.
+
 
