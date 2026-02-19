@@ -103,14 +103,6 @@ Adjust in `.env`:
 ```
 MAX_CONTEXT_TOKENS=4000
 ```
-
-Run the comprehensive test suite:
-```bash
-python -m pytest Tests/test_app.py -v
-# or
-python Tests/test_app.py
-```
-
 ### FAISS Index Issues
 ```bash
 rm -rf faiss_store/
