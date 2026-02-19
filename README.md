@@ -13,7 +13,6 @@ This project is built to ensure data security and confidentiality by allowing or
 - **FAISS** for efficient vector storage
 - **Llama 3.2** for streaming responses
 - **Request monitoring** and analytics
-- **API documentation** with Swagger/OpenAPI
 - **Batch re-indexing** capability
 - **Feedback collection** system
 
@@ -77,7 +76,6 @@ Access the app at:
 - `GET /api/index-status` - Detailed index information
 - `GET /api/cache-stats` - Cache statistics
 - `POST /api/cache-clear` - Clear query cache
-- `GET /api/analytics` - Feedback analytics
 
 ## Configuration
 
@@ -107,36 +105,15 @@ Adjust in `.env`:
 MAX_CONTEXT_TOKENS=4000
 ```
 
-## Security Features
-
-✅ **Input Validation** - Prevents XSS and injection attacks  
-✅ **Rate Limiting** - Token bucket algorithm per IP  
-✅ **CORS Protection** - Configurable origin whitelist  
-✅ **Error Handling** - Graceful error messages  
-✅ **Timeout Protection** - 15-second timeout on requests  
-✅ **Content Length Limits** - Max 16MB  
-✅ **Environment-based Config** - No hardcoded secrets  
-
-## Performance Features
-
-✅ **Query Caching** - 50-80% faster repeated queries  
-✅ **Chunk Deduplication** - 30% smaller indexes  
-✅ **Token-based History** - Prevents memory overflow  
-✅ **Parallel Scraping** - Multi-threaded indexing  
-✅ **Retry Logic** - Automatic network error recovery  
 
 ## Testing
 
 Run the comprehensive test suite:
 ```bash
 python -m pytest Tests/test_app.py -v
-# or
-python Tests/test_app.py
+
 ```
 
-## Documentation
-
-See [IMPROVEMENTS.md](IMPROVEMENTS.md) for detailed documentation of all improvements.
 
 ## Troubleshooting
 

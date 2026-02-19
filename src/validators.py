@@ -1,12 +1,8 @@
-"""
-Input validation and security utilities
-"""
 import re
 from typing import Dict, List, Any
 from src import logger
 
 class InputValidator:
-    """Validates and sanitizes user inputs."""
     
     MAX_QUERY_LENGTH = 5000
     MAX_URL_LENGTH = 2048
@@ -26,10 +22,6 @@ class InputValidator:
     
     @staticmethod
     def validate_query(query: str) -> tuple[bool, str, str]:
-        """
-        Validate chat query.
-        Returns: (is_valid, sanitized_query, error_message)
-        """
         if not query:
             return False, "", "Query cannot be empty"
         
@@ -53,10 +45,6 @@ class InputValidator:
     
     @staticmethod
     def validate_url(url: str) -> tuple[bool, str]:
-        """
-        Validate URL format.
-        Returns: (is_valid, error_message)
-        """
         if not url or not isinstance(url, str):
             return False, "URL must be a non-empty string"
         
@@ -78,10 +66,6 @@ class InputValidator:
     
     @staticmethod
     def validate_urls_list(urls: List[str]) -> tuple[bool, List[str], List[str]]:
-        """
-        Validate list of URLs.
-        Returns: (all_valid, valid_urls, error_messages)
-        """
         if not isinstance(urls, list):
             return False, [], ["URLs must be a list"]
         
@@ -102,7 +86,6 @@ class InputValidator:
 
 
 def sanitize_string(text: str, max_length: int = 5000) -> str:
-    """Basic string sanitization."""
     if not isinstance(text, str):
         return ""
     
@@ -114,7 +97,6 @@ def sanitize_string(text: str, max_length: int = 5000) -> str:
 
 
 def validate_json_request(data: Dict[str, Any], required_fields: List[str]) -> tuple[bool, str]:
-    """Validate JSON request has required fields."""
     if not isinstance(data, dict):
         return False, "Request body must be JSON"
     

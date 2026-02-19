@@ -3,7 +3,6 @@ let extraUrls = [];
 
 
 function isValidURL(url) {
-    // Regular expression to check if the input is a valid URL
     let urlPattern = /^(https?:\/\/)?([a-zA-Z0-9.-]+)\.[a-zA-Z]{2,6}(\/\S*)?$/;
     return urlPattern.test(url);
 }
@@ -104,14 +103,12 @@ function displayOutput(data) {
     let html = `<div style="padding: 20px; background-color: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">`;
     html += `<h2 style="color: #2e7d32;">✓ ${data.message}</h2>`;
     
-    // Display statistics
     html += `<p><strong>Total URLs processed:</strong> ${data.total_urls}</p>`;
     if (data.unscraped_count > 0) {
         html += `<p style="color: #d32f2f;"><strong>Unscraped URLs (${data.unscraped_count}):</strong></p>`;
         html += `<ul>${data.unscraped_urls.map(url => `<li>${url}</li>`).join('')}</ul>`;
     }
     
-    // Add success suggestion
     html += `<hr style="border: none; border-top: 1px solid #ccc; margin: 20px 0;">`;
     html += `<p style="font-size: 16px; color: #1976d2;"><strong>Next Step:</strong> ${data.next_action}</p>`;
     html += `<button class="submit-btn" onclick="window.location.href='${data.chat_url}'" style="background-color: #4caf50; font-size: 16px; padding: 12px 24px;">Open Organization-Specific LLM Chat</button>`;
