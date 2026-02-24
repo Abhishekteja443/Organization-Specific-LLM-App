@@ -3,7 +3,6 @@ let extraUrls = [];
 
 
 function isValidURL(url) {
-    // Regular expression to check if the input is a valid URL
     let urlPattern = /^(https?:\/\/)?([a-zA-Z0-9.-]+)\.[a-zA-Z]{2,6}(\/\S*)?$/;
     return urlPattern.test(url);
 }
@@ -98,21 +97,22 @@ function showError(message) {
     }, 3000);
 }
 
-function displayOutput(message, submittedUrls, unscrapedUrls) {
+function displayOutput(data) {
     let outputDiv = document.getElementById("output");
     
-    let html = `<strong>${message}</strong><br><br>`;
+    let html = `<div style="padding: 20px; background-color: #e8f5e9; border-radius: 8px; border-left: 4px solid #4caf50;">`;
+    html += `<h2 style="color: #2e7d32;">✓ ${data.message}</h2>`;
     
-    // Display submitted URLs
-    html += `<h3>Submitted URLs (${submittedUrls.length}):</h3>`;
-    html += `<ul>${submittedUrls.map(url => `<li>${url}</li>`).join('')}</ul>`;
+    html += `<p><strong>Total URLs processed:</strong> ${data.total_urls}</p>`;
+    if (data.unscraped_count > 0) {
+        html += `<p style="color: #d32f2f;"><strong>Unscraped URLs (${data.unscraped_count}):</strong></p>`;
+        html += `<ul>${data.unscraped_urls.map(url => `<li>${url}</li>`).join('')}</ul>`;
+    }
     
-    // Display unscraped URLs
-    html += `<h3>Unscraped URLs (${unscrapedUrls.length}):</h3>`;
-    html += `<ul>${unscrapedUrls.map(url => `<li>${url}</li>`).join('')}</ul>`;
-    
-    // Add Organization-GPT button
-    html += `<button id="org-gpt-btn" class="submit-btn" onclick="window.location.href='/organization-gpt'">Organization-GPT</button>`;
+    html += `<hr style="border: none; border-top: 1px solid #ccc; margin: 20px 0;">`;
+    html += `<p style="font-size: 16px; color: #1976d2;"><strong>Next Step:</strong> ${data.next_action}</p>`;
+    html += `<button class="submit-btn" onclick="window.location.href='${data.chat_url}'" style="background-color: #4caf50; font-size: 16px; padding: 12px 24px;">Open Organization-Specific LLM Chat</button>`;
+    html += `</div>`;
     
     outputDiv.innerHTML = html;
     outputDiv.style.display = "block";
@@ -133,8 +133,7 @@ function submitData() {
     })
     .then(response => response.json())
     .then(data => {
-        // Pass all three pieces of information to displayOutput
-        displayOutput(data.message, data.submitted_urls, data.unscraped_urls);
+        displayOutput(data);
         baseUrls = [];
         extraUrls = [];
         updateBaseUrlList();

@@ -8,6 +8,8 @@ typing
 psutil
 numpy
 flask
+flask-cors
 faiss-cpu
 python-dotenv
+setuptools
 -e .
