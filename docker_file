@@ -1,0 +1,17 @@
+FROM python:3.10
+
+RUN apt-get update && apt-get install -y curl zstd
+
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+RUN ollama serve & sleep 5 && ollama pull llama3.2:3b && ollama pull nomic-embed-text && pkill ollama
+
+WORKDIR /app
+
+COPY . .
+
+RUN pip install -r requirements.txt
+
+EXPOSE 5000
+
+CMD ["bash","start.sh"]
