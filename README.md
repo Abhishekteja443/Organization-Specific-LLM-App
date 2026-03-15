@@ -43,10 +43,10 @@ cp .env.example .env
 
 Key variables:
 ```
-FLASK_DEBUG=False              # Security: never True in production
+FLASK_DEBUG=False  
 FAISS_INDEX_PATH=./faiss_store
 CORS_ORIGINS=http://localhost:5000
-RATE_LIMIT_REQUESTS=100       # Per minute per IP
+RATE_LIMIT_REQUESTS=100 
 ```
 
 ### 5. Run the Application
@@ -126,5 +126,6 @@ Feel free to fork this repository and contribute enhancements via pull requests.
 
 ## License
 This project is licensed under the **MIT License**.
+
 
 
