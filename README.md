@@ -57,7 +57,6 @@ python app.py
 Access the app at:
 - **Admin Panel**: `http://localhost:5000/`
 - **Chat Interface**: `http://localhost:5000/organization-gpt`
-- **API Docs**: `http://localhost:5000/api/docs`
 
 ## API Endpoints
 

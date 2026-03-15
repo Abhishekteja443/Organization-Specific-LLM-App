@@ -31,14 +31,12 @@ class InputValidator:
         if len(query) > InputValidator.MAX_QUERY_LENGTH:
             return False, "", f"Query exceeds maximum length of {InputValidator.MAX_QUERY_LENGTH}"
         
-        # Check for malicious patterns
         query_lower = query.lower()
         for pattern in InputValidator.FORBIDDEN_PATTERNS:
             if re.search(pattern, query_lower):
                 logger.warning(f"Malicious pattern detected in query: {pattern}")
                 return False, "", "Invalid query content"
         
-        # Sanitize: trim whitespace
         sanitized = query.strip()
         
         return True, sanitized, ""
@@ -51,12 +49,10 @@ class InputValidator:
         if len(url) > InputValidator.MAX_URL_LENGTH:
             return False, f"URL exceeds maximum length of {InputValidator.MAX_URL_LENGTH}"
         
-        # Basic URL validation
         url_pattern = r'^https?://[^\s/$.?#].[^\s]*$'
         if not re.match(url_pattern, url, re.IGNORECASE):
             return False, "Invalid URL format"
         
-        # Check for malicious patterns
         url_lower = url.lower()
         for pattern in InputValidator.FORBIDDEN_PATTERNS:
             if re.search(pattern, url_lower):
