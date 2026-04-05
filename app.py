@@ -12,8 +12,12 @@ from src.validators import InputValidator, validate_json_request
 from src.rate_limiter import rate_limiter, request_monitor
 from src.faiss_manager import faiss_manager
 from src.cache import query_cache
+from dotenv import load_dotenv
+
+load_dotenv()
 
 #Initialize Flask app
+
 app = Flask(__name__)
 
 # Security configuration
