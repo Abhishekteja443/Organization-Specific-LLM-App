@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+
+load_dotenv()
 from flask import Flask, render_template, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 import os
@@ -12,9 +15,7 @@ from src.validators import InputValidator, validate_json_request
 from src.rate_limiter import rate_limiter, request_monitor
 from src.faiss_manager import faiss_manager
 from src.cache import query_cache
-from dotenv import load_dotenv
 
-load_dotenv()
 
 #Initialize Flask app
 
