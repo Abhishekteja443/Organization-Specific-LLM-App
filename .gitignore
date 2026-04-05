@@ -2,7 +2,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 venv/
-.env
 Oragnization_Specific_LLM_App.egg-info/
 logs/
 faiss_store/
