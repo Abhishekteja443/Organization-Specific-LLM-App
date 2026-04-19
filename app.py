@@ -200,28 +200,28 @@ def chat_stream():
         logger.info(f"Chat query received:{sanitized_query[:100]}...")
         
         def generate():
-    try:
-        cache_key = f"llm:{sanitized_query}"
-        cached = redis_client.get(cache_key)
+            try:
+                cache_key = f"llm:{sanitized_query}"
+                cached = redis_client.get(cache_key)
+        
+                if cached:
+                    print("cache hit", cached)
+                    yield f"data: {json.dumps({'content': cached, 'source_url': 'cache'})}\n\n"
+                    yield f"data: {json.dumps({'done': True})}\n\n"
+                    return
+        
+                full_response = ""
+                for content, source_url in stream_chat_response(sanitized_query):
+                    full_response += content
+        
+                    yield f"data: {json.dumps({'content': content, 'source_url': source_url})}\n\n"
+                redis_client.setex(cache_key, 3600, full_response)
+        
+                yield f"data: {json.dumps({'done': True})}\n\n"
 
-        if cached:
-            print("cache hit", cached)
-            yield f"data: {json.dumps({'content': cached, 'source_url': 'cache'})}\n\n"
-            yield f"data: {json.dumps({'done': True})}\n\n"
-            return
-
-        full_response = ""
-        for content, source_url in stream_chat_response(sanitized_query):
-            full_response += content
-
-            yield f"data: {json.dumps({'content': content, 'source_url': source_url})}\n\n"
-        redis_client.setex(cache_key, 3600, full_response)
-
-        yield f"data: {json.dumps({'done': True})}\n\n"
-
-    except Exception as e:
-        logger.error(f"Error during streaming: {e}", exc_info=True)
-        yield f"data: {json.dumps({'error': 'Stream error occurred'})}\n\n"
+            except Exception as e:
+                logger.error(f"Error during streaming: {e}", exc_info=True)
+                yield f"data: {json.dumps({'error': 'Stream error occurred'})}\n\n"
         
         return Response(stream_with_context(generate()), content_type="text/event-stream")
     
