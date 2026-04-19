@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 
 load_dotenv()
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context, redirect, url_for
 from flask_cors import CORS
 import os
 import time
@@ -12,9 +12,7 @@ from functools import wraps
 from src import helper, logger
 from src.chat_engine import stream_chat_response
 from src.validators import InputValidator, validate_json_request
-from src.rate_limiter import rate_limiter, request_monitor
 from src.faiss_manager import faiss_manager
-from src.cache import query_cache
 
 
 #Initialize Flask app
@@ -23,7 +21,7 @@ app = Flask(__name__)
 
 # Security configuration
 app.config['JSON_SORT_KEYS'] = False
-app.config['MAX_CONTENT_LENGTH'] =16 * 1024 * 1024  # 16MB max request size
+app.config['MAX_CONTENT_LENGTH'] =16 * 1024 * 1024
 
 #Enable CORS with restricted origins
 CORS(app, resources={
@@ -37,23 +35,6 @@ CORS(app, resources={
 DEBUG_MODE =os.getenv("FLASK_DEBUG","False").lower() =="true"
 
 
-def require_rate_limit(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        ip =request.remote_addr
-        allowed, limits= rate_limiter.is_allowed(ip)
-        
-        if not allowed:
-            logger.warning(f"Rate limit exceeded for IP: {ip}")
-            response = jsonify({
-                "error": "Rate limit exceeded",
-                "reset_in": limits["reset_in"]})
-            response.status_code =429
-            return response
-        
-        return f(*args,**kwargs)
-    
-    return decorated_function
 
 
 def log_request(f):
@@ -66,11 +47,9 @@ def log_request(f):
             response =f(*args, **kwargs)
             response_time =time.time() - start_time
             status_code =response.status_code if hasattr(response, 'status_code') else 200
-            request_monitor.log_request(endpoint, status_code, response_time, request.remote_addr)
             return response
         except Exception as e:
             response_time = time.time() -start_time
-            request_monitor.log_request(endpoint, 500, response_time, request.remote_addr)
             logger.error(f"Unhandled error in {endpoint}: {e}",exc_info=True)
             raise
     
@@ -81,6 +60,15 @@ def log_request(f):
 @log_request
 def admin_panel():
     try:
+        return redirect(url_for("login"))
+    except Exception as e:
+        logger.error(f"Error redirecting to login:{e}")
+        return jsonify({"error": "Failed to redirect to login"}),500
+    
+@app.route("/index", methods=["GET"])
+@log_request
+def index_panel():
+    try:
         return render_template("index.html")
     except Exception as e:
         logger.error(f"Error rendering admin panel:{e}")
@@ -88,7 +76,6 @@ def admin_panel():
 
 
 @app.route("/submit-urls", methods=["POST"])
-@require_rate_limit
 @log_request
 def receive_urls():
     try:
@@ -166,8 +153,34 @@ def org_gpt_interface():
         return jsonify({"error": "Failed to load chat interface"}), 500
 
 
+@app.route("/login", methods=["GET", "POST"])
+@log_request
+def login():
+    try:
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "").strip()
+
+            valid_users = {
+                "admin": "admin",
+                "w868axg": "56452312"
+            }
+
+            if username in valid_users and valid_users[username] == password:
+                if username == "admin":
+                    return redirect(url_for("index_panel"))
+                return redirect(url_for("org_gpt_interface"))
+
+            error = "Invalid username or password."
+            return render_template("login.html", error=error, username=username)
+
+        return render_template("login.html")
+    except Exception as e:
+        logger.error(f"Error rendering login page: {e}")
+        return jsonify({"error": "Failed to load login page"}), 500
+
+
 @app.route("/chat-stream", methods=["GET"])
-@require_rate_limit
 @log_request
 def chat_stream():
     try:
@@ -226,41 +239,16 @@ def health_check():
 def get_stats():
     try:
         faiss_stats =faiss_manager.get_index_stats()
-        request_stats= request_monitor.get_stats()
         
         return jsonify({
             "faiss": faiss_stats,
-            "requests": request_stats
+            # "requests": request_stats
         }), 200
     
     except Exception as e:
         logger.error(f"Error getting stats: {e}", exc_info=True)
         return jsonify({"error": "Failed to retrieve stats"}), 500
 
-
-@app.route("/api/cache-stats", methods=["GET"])
-@log_request
-def cache_stats():
-    try:
-        return jsonify({
-            "cache_size": len(query_cache.cache),
-            "max_size": query_cache.max_size,
-            "ttl_seconds": query_cache.ttl
-        }), 200
-    except Exception as e:
-        logger.error(f"Error getting cache stats: {e}")
-        return jsonify({"error": "Failed to retrieve cache stats"}), 500
-
-
-@app.route("/api/cache-clear", methods=["POST"])
-@log_request
-def clear_cache():
-    try:
-        query_cache.clear()
-        return jsonify({"message": "Cache cleared"}), 200
-    except Exception as e:
-        logger.error(f"Error clearing cache: {e}",exc_info=True)
-        return jsonify({"error": "Failed to clear cache"}), 500
 
 
 
@@ -337,11 +325,6 @@ def not_found(e):
     
     logger.warning(f"Not found: {request_path} - {e}")
     return jsonify({"error": "Endpoint not found"}), 404
-
-
-@app.errorhandler(429)
-def rate_limit_exceeded(e):
-    return jsonify({"error": "Rate limit exceeded"}), 429
 
 
 @app.errorhandler(500)

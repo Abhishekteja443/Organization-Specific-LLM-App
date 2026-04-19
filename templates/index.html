@@ -4,13 +4,113 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - URL Input</title>
-    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+        body {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: #f5f5f5;
+            color: #2c3e50;
+        }
+        .header {
+            background-color: #147446;
+            color: white;
+            text-align: center;
+            flex-shrink: 0;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .container {
+            width: 100%;
+            max-width: 760px;
+            margin: 2rem auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        }
+        .container h2 {
+            margin-bottom: 1rem;
+            color: #147446;
+            font-size: 1.9rem;
+        }
+        label {
+            display: block;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        .input-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+        .input-group input {
+            flex: 1;
+            padding: 0.95rem 1rem;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            font-size: 1rem;
+            outline: none;
+        }
+        .input-group input:focus {
+            border-color: #147446;
+            box-shadow: 0 0 0 3px rgba(20, 116, 70, 0.12);
+        }
+        .input-group button,
+        .submit-btn {
+            padding: 0.95rem 1.25rem;
+            border: none;
+            border-radius: 12px;
+            background-color: #147446;
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .input-group button:hover,
+        .submit-btn:hover {
+            background-color: #115f39;
+        }
+        #base-url-list,
+        #extra-url-list {
+            list-style: none;
+            margin-top: 0.5rem;
+            padding-left: 0;
+            color: #444;
+        }
+        .submit-btn {
+            margin-top: 1.5rem;
+        }
+        .error {
+            margin-top: 1rem;
+            color: #c0392b;
+            font-weight: 600;
+        }
+        #output {
+            margin-top: 1.5rem;
+            color: #34495e;
+            line-height: 1.6;
+        }
+    </style>
 </head>
 <body>
+    <div class="header">
+        <h1 style="display: inline-block; vertical-align: middle;">Raider-GPT</h1>
+        <img src="/static/raider mascot.png"
+     alt="Raider Mascot"
+     style="height: 80px; width: auto; margin-right: 1rem; vertical-align: middle;">
+    </div>
+
     <div class="container">
         <h2>Administrator Panel - Enter URLs</h2>
 
-        <!-- Base URL Input -->
         <label for="base-url">Base URL (Sitemap):</label>
         <div class="input-group">
             <input type="text" id="base-url" placeholder="Enter Sitemap URL">
@@ -18,7 +118,6 @@
         </div>
         <ul id="base-url-list"></ul>
 
-        <!-- Additional URLs Input -->
         <label for="extra-url">Additional URLs:</label>
         <div class="input-group">
             <input type="text" id="extra-url" placeholder="Enter Additional URL">

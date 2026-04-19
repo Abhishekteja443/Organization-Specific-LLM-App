@@ -6,7 +6,6 @@ This project is built to ensure data security and confidentiality by allowing or
 ### Features:
 - **Retrieval-Augmented Generation (RAG)** with semantic search
 - **Query caching** for 50-80% performance improvement
-- **Rate limiting** and comprehensive security
 - **Chunk deduplication** and intelligent indexing
 - **Token-based conversation** history management
 - **Ollama Nomic Embeddings** for semantic embeddings
@@ -46,7 +45,6 @@ Key variables:
 FLASK_DEBUG=False  
 FAISS_INDEX_PATH=./faiss_store
 CORS_ORIGINS=http://localhost:5000
-RATE_LIMIT_REQUESTS=100 
 ```
 
 ### 5. Run the Application
@@ -72,28 +70,10 @@ Access the app at:
 - `GET /api/health` - Health check
 - `GET /api/stats` - System statistics
 - `GET /api/index-status` - Detailed index information
-- `GET /api/cache-stats` - Cache statistics
-- `POST /api/cache-clear` - Clear query cache
+
 
 ## Configuration
 
-### Rate Limiting
-Default: 100 requests per minute per IP address
-
-Adjust in `.env`:
-```
-RATE_LIMIT_REQUESTS=100
-RATE_LIMIT_WINDOW=60
-```
-
-### Query Caching
-Default: 500 queries cached for 1 hour
-
-Adjust in `.env`:
-```
-CACHE_MAX_SIZE=500
-CACHE_TTL=3600
-```
 
 ### Conversation History
 Default: 4000 tokens max context
@@ -117,9 +97,6 @@ ollama serve
 ollama pull llama3.2:3b
 ollama pull nomic-embed-text
 ```
-
-### Rate Limit Exceeded
-Reduce request frequency or adjust `RATE_LIMIT_REQUESTS` in `.env`
 
 ## Contributing
 Feel free to fork this repository and contribute enhancements via pull requests.
