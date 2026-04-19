@@ -5,13 +5,11 @@ This project is built to ensure data security and confidentiality by allowing or
 
 ### Features:
 - **Retrieval-Augmented Generation (RAG)** with semantic search
-- **Query caching** for 50-80% performance improvement
 - **Chunk deduplication** and intelligent indexing
 - **Token-based conversation** history management
 - **Ollama Nomic Embeddings** for semantic embeddings
 - **FAISS** for efficient vector storage
 - **Llama 3.2** for streaming responses
-- **Request monitoring** and analytics
 - **Batch re-indexing** capability
 
 ## Setup and Installation
