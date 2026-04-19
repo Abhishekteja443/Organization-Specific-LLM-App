@@ -13,7 +13,13 @@ from src import helper, logger
 from src.chat_engine import stream_chat_response
 from src.validators import InputValidator, validate_json_request
 from src.faiss_manager import faiss_manager
+import redis
 
+r = redis.Redis(
+    host="mycache-urievg.serverless.use2.cache.amazonaws.com:6379",  # replace this
+    port=6379,
+    decode_responses=True
+)
 
 #Initialize Flask app
 
