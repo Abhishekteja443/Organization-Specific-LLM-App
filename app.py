@@ -8,6 +8,7 @@ import time
 import json
 from datetime import datetime
 from functools import wraps
+import threading
 
 from src import helper, logger
 from src.chat_engine import stream_chat_response
@@ -16,9 +17,10 @@ from src.faiss_manager import faiss_manager
 import redis
 
 redis_client = redis.Redis(
-    host="mycache-urievg.serverless.use2.cache.amazonaws.com:6379",  # replace this
+    host="my-rag-valkey-urievg.serverless.use2.cache.amazonaws.com",  # replace this
     port=6379,
-    decode_responses=True
+    decode_responses=True,
+    ssl = True
 )
 print(redis_client)
 #Initialize Flask app
@@ -201,14 +203,43 @@ def chat_stream():
 
         def generate():
             try:
+                cache_key = f"llm:{sanitized_query}"
+
+                # Check cache first
+                try:
+                    cached = redis_client.get(cache_key)
+                except Exception as e:
+                    logger.warning(f"Cache read failed: {e}")
+                    cached = None
+
+                if cached:
+                    logger.info(f"Cache HIT: {sanitized_query[:50]}")
+                    yield f"data: {json.dumps({'content': cached, 'source_url': 'cache'})}\n\n"
+                    yield f"data: {json.dumps({'done': True})}\n\n"
+                    return
+
+                # Cache MISS - stream from LLM normally
+                logger.info(f"Cache MISS: {sanitized_query[:50]}")
+                full_response = ""
+                last_source_url = None
+
                 for content, source_url in stream_chat_response(sanitized_query):
-                    event_data ={
-                        'content': content,
-                        'source_url': source_url
-                    }
-                    yield f"data: {json.dumps(event_data)}\n\n"
+                    full_response += content
+                    last_source_url = source_url
+                    yield f"data: {json.dumps({'content': content, 'source_url': source_url})}\n\n"
 
                 yield f"data: {json.dumps({'done': True})}\n\n"
+
+                # Save to cache in background — does NOT block LLM or stream
+                def save_to_cache():
+                    try:
+                        redis_client.setex(cache_key, 3600, full_response)
+                        logger.info(f"Cached response for: {sanitized_query[:50]}")
+                    except Exception as e:
+                        logger.warning(f"Cache write failed: {e}")
+
+                threading.Thread(target=save_to_cache, daemon=True).start()
+
             except Exception as e:
                 logger.error(f"Error during streaming: {e}", exc_info=True)
                 yield f"data: {json.dumps({'error': 'Stream error occurred'})}\n\n"
