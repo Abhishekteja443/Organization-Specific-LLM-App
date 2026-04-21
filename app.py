@@ -200,62 +200,62 @@ def chat_stream():
 
         logger.info(f"Chat query received:{sanitized_query[:100]}...")
 
-        # def generate():
-        #     try:
-
-        #         cache_key = "llm:" + hashlib.md5(sanitized_query.encode()).hexdigest()
-
-        #         try:
-        #             cached = redis_client.get(cache_key)
-        #         except Exception as e:
-        #             logger.warning(f"Cache read failed: {e}")
-        #             cached = None
-
-        #         if cached:
-        #             logger.info(f"Cache HIT: {sanitized_query[:50]}")
-        #             yield f"data: {json.dumps({'content': cached, 'source_url': 'cache'})}\n\n"
-        #             yield f"data: {json.dumps({'done': True})}\n\n"
-        #             return
-                
-        #         logger.info(f"Cache MISS: {sanitized_query[:50]}")
-        #         full_response = ""
-        #         last_source_url = None
-
-        #         for content, source_url in stream_chat_response(sanitized_query):
-        #             full_response += content
-        #             last_source_url = source_url
-        #             yield f"data: {json.dumps({'content': content, 'source_url': source_url})}\n\n"
-
-        #         yield f"data: {json.dumps({'done': True})}\n\n"
-
-        #         def save_to_cache():
-        #             try:
-        #                 redis_client.setex(cache_key, 3600, full_response)
-        #                 logger.info(f"Cached response for: {sanitized_query[:50]}")
-        #             except Exception as e:
-        #                 logger.warning(f"Cache write failed: {e}")
-
-        #         threading.Thread(target=save_to_cache, daemon=True).start()
-
-        #     except Exception as e:
-        #         logger.error(f"Error during streaming: {e}", exc_info=True)
-        #         yield f"data: {json.dumps({'error': 'Stream error occurred'})}\n\n"
-        
         def generate():
             try:
+
+                cache_key = "llm:" + hashlib.md5(sanitized_query.encode()).hexdigest()
+
+                try:
+                    cached = redis_client.get(cache_key)
+                except Exception as e:
+                    logger.warning(f"Cache read failed: {e}")
+                    cached = None
+
+                if cached:
+                    logger.info(f"Cache HIT: {sanitized_query[:50]}")
+                    yield f"data: {json.dumps({'content': cached, 'source_url': 'cache'})}\n\n"
+                    yield f"data: {json.dumps({'done': True})}\n\n"
+                    return
+                
+                logger.info(f"Cache MISS: {sanitized_query[:50]}")
+                full_response = ""
+                last_source_url = None
+
                 for content, source_url in stream_chat_response(sanitized_query):
-                    event_data ={
-                        'content': content,
-                        'source_url': source_url
-                    }
-                    yield f"data: {json.dumps(event_data)}\n\n"
+                    full_response += content
+                    last_source_url = source_url
+                    yield f"data: {json.dumps({'content': content, 'source_url': source_url})}\n\n"
 
                 yield f"data: {json.dumps({'done': True})}\n\n"
+
+                def save_to_cache():
+                    try:
+                        redis_client.setex(cache_key, 3600, full_response)
+                        logger.info(f"Cached response for: {sanitized_query[:50]}")
+                    except Exception as e:
+                        logger.warning(f"Cache write failed: {e}")
+
+                threading.Thread(target=save_to_cache, daemon=True).start()
+
             except Exception as e:
                 logger.error(f"Error during streaming: {e}", exc_info=True)
                 yield f"data: {json.dumps({'error': 'Stream error occurred'})}\n\n"
+        
+        # def generate():
+        #     try:
+        #         for content, source_url in stream_chat_response(sanitized_query):
+        #             event_data ={
+        #                 'content': content,
+        #                 'source_url': source_url
+        #             }
+        #             yield f"data: {json.dumps(event_data)}\n\n"
 
-        return Response(stream_with_context(generate()), content_type="text/event-stream")
+        #         yield f"data: {json.dumps({'done': True})}\n\n"
+        #     except Exception as e:
+        #         logger.error(f"Error during streaming: {e}", exc_info=True)
+        #         yield f"data: {json.dumps({'error': 'Stream error occurred'})}\n\n"
+
+        # return Response(stream_with_context(generate()), content_type="text/event-stream")
 
     except Exception as e:
         logger.error(f"Error in chat_stream: {e}", exc_info=True)
