@@ -9,7 +9,7 @@ import json
 from datetime import datetime
 from functools import wraps
 import threading
-
+import hashlib
 from src import helper, logger
 from src.chat_engine import stream_chat_response
 from src.validators import InputValidator, validate_json_request
@@ -17,7 +17,7 @@ from src.faiss_manager import faiss_manager
 import redis
 
 redis_client = redis.Redis(
-    host="my-rag-valkey-urievg.serverless.use2.cache.amazonaws.com",  # replace this
+    host="my-rag-valkey-urievg.serverless.use2.cache.amazonaws.com",
     port=6379,
     decode_responses=True,
     ssl = True
@@ -194,52 +194,63 @@ def chat_stream():
     try:
         query =request.args.get("query", "").strip()
 
-        #Validate query
         is_valid, sanitized_query, error =InputValidator.validate_query(query)
         if not is_valid:
             return jsonify({"error": error}), 400
 
         logger.info(f"Chat query received:{sanitized_query[:100]}...")
 
+        # def generate():
+        #     try:
+
+        #         cache_key = "llm:" + hashlib.md5(sanitized_query.encode()).hexdigest()
+
+        #         try:
+        #             cached = redis_client.get(cache_key)
+        #         except Exception as e:
+        #             logger.warning(f"Cache read failed: {e}")
+        #             cached = None
+
+        #         if cached:
+        #             logger.info(f"Cache HIT: {sanitized_query[:50]}")
+        #             yield f"data: {json.dumps({'content': cached, 'source_url': 'cache'})}\n\n"
+        #             yield f"data: {json.dumps({'done': True})}\n\n"
+        #             return
+                
+        #         logger.info(f"Cache MISS: {sanitized_query[:50]}")
+        #         full_response = ""
+        #         last_source_url = None
+
+        #         for content, source_url in stream_chat_response(sanitized_query):
+        #             full_response += content
+        #             last_source_url = source_url
+        #             yield f"data: {json.dumps({'content': content, 'source_url': source_url})}\n\n"
+
+        #         yield f"data: {json.dumps({'done': True})}\n\n"
+
+        #         def save_to_cache():
+        #             try:
+        #                 redis_client.setex(cache_key, 3600, full_response)
+        #                 logger.info(f"Cached response for: {sanitized_query[:50]}")
+        #             except Exception as e:
+        #                 logger.warning(f"Cache write failed: {e}")
+
+        #         threading.Thread(target=save_to_cache, daemon=True).start()
+
+        #     except Exception as e:
+        #         logger.error(f"Error during streaming: {e}", exc_info=True)
+        #         yield f"data: {json.dumps({'error': 'Stream error occurred'})}\n\n"
+        
         def generate():
             try:
-                cache_key = f"llm:{sanitized_query}"
-
-                # Check cache first
-                try:
-                    cached = redis_client.get(cache_key)
-                except Exception as e:
-                    logger.warning(f"Cache read failed: {e}")
-                    cached = None
-
-                if cached:
-                    logger.info(f"Cache HIT: {sanitized_query[:50]}")
-                    yield f"data: {json.dumps({'content': cached, 'source_url': 'cache'})}\n\n"
-                    yield f"data: {json.dumps({'done': True})}\n\n"
-                    return
-
-                # Cache MISS - stream from LLM normally
-                logger.info(f"Cache MISS: {sanitized_query[:50]}")
-                full_response = ""
-                last_source_url = None
-
                 for content, source_url in stream_chat_response(sanitized_query):
-                    full_response += content
-                    last_source_url = source_url
-                    yield f"data: {json.dumps({'content': content, 'source_url': source_url})}\n\n"
+                    event_data ={
+                        'content': content,
+                        'source_url': source_url
+                    }
+                    yield f"data: {json.dumps(event_data)}\n\n"
 
                 yield f"data: {json.dumps({'done': True})}\n\n"
-
-                # Save to cache in background — does NOT block LLM or stream
-                def save_to_cache():
-                    try:
-                        redis_client.setex(cache_key, 3600, full_response)
-                        logger.info(f"Cached response for: {sanitized_query[:50]}")
-                    except Exception as e:
-                        logger.warning(f"Cache write failed: {e}")
-
-                threading.Thread(target=save_to_cache, daemon=True).start()
-
             except Exception as e:
                 logger.error(f"Error during streaming: {e}", exc_info=True)
                 yield f"data: {json.dumps({'error': 'Stream error occurred'})}\n\n"
@@ -270,80 +281,48 @@ def health_check():
         }), 503
 
 
-@app.route("/api/stats", methods=["GET"])
-@log_request
-def get_stats():
-    try:
-        faiss_stats =faiss_manager.get_index_stats()
+
+# @app.route("/api/reindex", methods=["POST"])
+# @log_request
+# def reindex():
+#     try:
+#         data = request.json or {}
+#         urls = data.get("urls", [])
+#         clear_existing = data.get("clear_existing", False)
         
-        return jsonify({
-            "faiss": faiss_stats,
-            # "requests": request_stats
-        }), 200
+#         if not urls:
+#             return jsonify({"error": "No URLs provided"}), 400
+        
+#         # Validate URLs
+#         all_valid, valid_urls, errors = InputValidator.validate_urls_list(urls)
+#         if not all_valid:
+#             return jsonify({
+#                 "error": "Some URLs are invalid",
+#                 "validation_errors": errors
+#             }), 400
+        
+#         if clear_existing:
+#             logger.info("Clearing existing index")
+#             faiss_manager.all_documents = []
+#             faiss_manager.all_embeddings = []
+#             faiss_manager.all_metadatas = []
+#             faiss_manager.all_ids = []
+#             faiss_manager.url_to_chunks = {}
+#             faiss_manager.save_metadata()
+        
+#         logger.info(f"Starting re-indexing of {len(valid_urls)} URLs")
+#         unscraped = helper.process_urls(set(valid_urls))
+        
+#         return jsonify({
+#             "message": "Re-indexing started",
+#             "processed_urls": len(valid_urls),
+#             "unscraped_urls": list(unscraped),
+#             "unscraped_count": len(unscraped)
+#         }), 202
     
-    except Exception as e:
-        logger.error(f"Error getting stats: {e}", exc_info=True)
-        return jsonify({"error": "Failed to retrieve stats"}), 500
-
-
-
-
-@app.route("/api/reindex", methods=["POST"])
-@log_request
-def reindex():
-    try:
-        data = request.json or {}
-        urls = data.get("urls", [])
-        clear_existing = data.get("clear_existing", False)
-        
-        if not urls:
-            return jsonify({"error": "No URLs provided"}), 400
-        
-        # Validate URLs
-        all_valid, valid_urls, errors = InputValidator.validate_urls_list(urls)
-        if not all_valid:
-            return jsonify({
-                "error": "Some URLs are invalid",
-                "validation_errors": errors
-            }), 400
-        
-        if clear_existing:
-            logger.info("Clearing existing index")
-            faiss_manager.all_documents = []
-            faiss_manager.all_embeddings = []
-            faiss_manager.all_metadatas = []
-            faiss_manager.all_ids = []
-            faiss_manager.url_to_chunks = {}
-            faiss_manager.save_metadata()
-        
-        logger.info(f"Starting re-indexing of {len(valid_urls)} URLs")
-        unscraped = helper.process_urls(set(valid_urls))
-        
-        return jsonify({
-            "message": "Re-indexing started",
-            "processed_urls": len(valid_urls),
-            "unscraped_urls": list(unscraped),
-            "unscraped_count": len(unscraped)
-        }), 202
-    
-    except Exception as e:
-        logger.error(f"Error in reindex: {e}", exc_info=True)
-        return jsonify({"error": "Failed to start re-indexing"}), 500
-
-
-@app.route("/api/index-status", methods=["GET"])
-@log_request
-def index_status():
-    try:
-        stats = faiss_manager.get_index_stats()
-        
-        return jsonify({
-            **stats,
-            "timestamp": datetime.now().isoformat()
-        }), 200
-    except Exception as e:
-        logger.error(f"Error getting index status: {e}")
-        return jsonify({"error": "Failed to get index status"}), 500
+#     except Exception as e:
+#         logger.error(f"Error in reindex: {e}", exc_info=True)
+#         return jsonify({"error": "Failed to start re-indexing"}), 500
 
 
 @app.errorhandler(400)

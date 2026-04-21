@@ -12,4 +12,5 @@ flask-cors
 faiss-cpu
 python-dotenv
 setuptools
+redis
 -e .
