@@ -255,7 +255,7 @@ def chat_stream():
         #         logger.error(f"Error during streaming: {e}", exc_info=True)
         #         yield f"data: {json.dumps({'error': 'Stream error occurred'})}\n\n"
 
-        # return Response(stream_with_context(generate()), content_type="text/event-stream")
+        return Response(stream_with_context(generate()), content_type="text/event-stream")
 
     except Exception as e:
         logger.error(f"Error in chat_stream: {e}", exc_info=True)
