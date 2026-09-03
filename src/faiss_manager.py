@@ -85,7 +85,7 @@ class FAISSManager:
                 self.index = faiss.IndexIVFFlat(quantizer, dimension, nlist, faiss.METRIC_L2)
                 self.index.train(np.array(self.all_embeddings, dtype=np.float32))
                 self.index.add(np.array(self.all_embeddings, dtype=np.float32))
-                self.index.nprobe = min(20, nlist // 2)
+                self.index.nprobe = max(1, min(20, nlist // 2))
                 
                 logger.info(f"FAISS Index Loaded: {self.index.ntotal} vectors, {nlist} clusters, nprobe={self.index.nprobe}")
             else:
@@ -153,7 +153,7 @@ class FAISSManager:
                     logger.info("Adding new vectors without retraining.")
                 
                 self.index.add(embedding_array)
-                self.index.nprobe = min(20, nlist // 2)
+                self.index.nprobe = max(1, min(20, nlist // 2))
 
                 faiss_dir = os.path.dirname(self.INDEX_FAISS_FILE) or "."
                 os.makedirs(faiss_dir, exist_ok=True)
